@@ -22,17 +22,38 @@ export default function ReportPage() {
   const [year, setYear] = useState(prevMonth.getFullYear());
   const [month, setMonth] = useState(prevMonth.getMonth() + 1);
   const [report, setReport] = useState(null);
-  const userId = 1; // 실제 사용자 ID로 교체 필요
-  const API_BASE_URL = "https://4264-134-75-39-23.ngrok-free.app"
 
   const fetchReport = async () => {
     try {
-      const queryMonth = `${year}-${month.toString().padStart(2, "0")}`;
-      const response = await fetch(`${API_BASE_URL}/api/reports/userId=${userId}/month=${queryMonth}`);
-      if (!response.ok) {
-        throw new Error("리포트 생성 또는 조회 실패");
-      }
-      const result = await response.json();
+      // 샘플 데이터 삽입
+      const result = {
+        month: "2025-05",
+        totalSpending: 525300,
+        categoryBreakdown: {
+          "카페": 40000,
+          "식비": 150000,
+          "교통": 32300,
+          "문화": 25000,
+          "공과금": 40000,
+          "의류": 250000,
+        },
+        categoryRatio: {
+          "카페": 7.61,
+          "식비": 28.56,
+          "교통": 6.15,
+          "문화": 4.76,
+          "공과금": 7.61,
+          "의류": 47.53,
+        },
+        monthBudget: 500000,
+        budgetUsageRate: 105.06,
+        weeklySpendingRate: [19.71, 0.0, 0.0, 23.93, 56.36],
+        patternAnalysis:
+          "5월 초에 카페와 식비 지출이 집중되어 있고, 5월 6일에 의류 항목으로 큰 지출이 발생했습니다. 공과금과 문화비, 교통비는 상대적으로 적은 편이며, 전체 지출 중 절반 가까이가 의류 쇼핑에 사용되었습니다. 주간별로 보면 첫째 주와 넷째 주에 지출이 가장 많이 발생한 경향이 있습니다.",
+        feedback:
+          "전체 예산 50만원을 소폭 초과하셨습니다. 특히 의류 쇼핑에서 큰 지출이 있었으므로, 다음 달에는 의류 지출을 계획적으로 조절하시고, 평소 작은 지출들이 누적되지 않도록 주의하시면 예산 내에서 소비 관리가 가능할 것입니다. 또한 주간별로 지출 분포를 고르게 하여 불필요한 과다 지출을 감소시키는 것도 도움이 됩니다.",
+      };
+
       setReport({ summary: result });
     } catch (error) {
       console.error("리포트 조회 실패:", error);
@@ -61,7 +82,14 @@ export default function ReportPage() {
     }
   };
 
-  const pieColors = ["#8fd694", "#f6b94d", "#79a8f5", "#ccc", "#b4b4b4", "#f59f9f"];
+  const pieColors = [
+    "#8fd694",
+    "#f6b94d",
+    "#79a8f5",
+    "#ccc",
+    "#b4b4b4",
+    "#f59f9f"
+  ];
 
   const pieChartData = report
     ? Object.entries(report.summary.categoryBreakdown).map(([name, value]) => ({
@@ -74,8 +102,7 @@ export default function ReportPage() {
     ? {
         total: report.summary.monthBudget ?? 0,
         used: report.summary.totalSpending ?? 0,
-        remaining:
-          (report.summary.monthBudget ?? 0) - (report.summary.totalSpending ?? 0),
+        remaining: (report.summary.monthBudget ?? 0) - (report.summary.totalSpending ?? 0),
         usageRate: report.summary.budgetUsageRate ?? 0,
       }
     : { total: 0, used: 0, remaining: 0, usageRate: 0 };
@@ -92,15 +119,9 @@ export default function ReportPage() {
       <TopBar />
       <main style={styles.main}>
         <div style={styles.monthNav}>
-          <button onClick={handlePrevMonth} style={styles.monthArrow}>
-            &lt;
-          </button>
-          <h1 style={styles.monthText}>
-            {year}년 {month}월
-          </h1>
-          <button onClick={handleNextMonth} style={styles.monthArrow}>
-            &gt;
-          </button>
+          <button onClick={handlePrevMonth} style={styles.monthArrow}>&lt;</button>
+          <h1 style={styles.monthText}>{year}년 {month}월</h1>
+          <button onClick={handleNextMonth} style={styles.monthArrow}>&gt;</button>
         </div>
 
         <section style={styles.chartSection}>
@@ -139,18 +160,9 @@ export default function ReportPage() {
               {budgetData.usageRate}%
             </div>
           </div>
-          <p>
-            총 예산: -{budgetData.total.toLocaleString()}
-            <span style={styles.unit}>(원)</span>
-          </p>
-          <p>
-            사용 금액: -{budgetData.used.toLocaleString()}
-            <span style={styles.unit}>(원)</span>
-          </p>
-          <p>
-            남은 금액: -{budgetData.remaining.toLocaleString()}
-            <span style={styles.unit}>(원)</span>
-          </p>
+          <p>총 예산:  {(budgetData.total).toLocaleString()}<span style={styles.unit}>(원)</span></p>
+          <p>사용 금액:  {(budgetData.used).toLocaleString()}<span style={styles.unit}>(원)</span></p>
+          <p>남은 금액:  {(budgetData.remaining).toLocaleString()}<span style={styles.unit}>(원)</span></p>
         </section>
 
         <div style={styles.divider}></div>
