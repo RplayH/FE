@@ -17,30 +17,41 @@ import {
 } from "recharts";
 
 export default function ReportPage() {
+  const userId = 123;
   const now = new Date();
   const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1);
   const [year, setYear] = useState(prevMonth.getFullYear());
   const [month, setMonth] = useState(prevMonth.getMonth() + 1);
   const [report, setReport] = useState(null);
-  const userId = 1; // 실제 사용자 ID로 교체 필요
-  const API_BASE_URL = "https://4264-134-75-39-23.ngrok-free.app"
-
-  const fetchReport = async () => {
-    try {
-      const queryMonth = `${year}-${month.toString().padStart(2, "0")}`;
-      const response = await fetch(`${API_BASE_URL}/api/reports/userId=${userId}/month=${queryMonth}`);
-      if (!response.ok) {
-        throw new Error("리포트 생성 또는 조회 실패");
-      }
-      const result = await response.json();
-      setReport({ summary: result });
-    } catch (error) {
-      console.error("리포트 조회 실패:", error);
-    }
-  };
 
   useEffect(() => {
-    fetchReport();
+    const loadOrCreateReport = async () => {
+      try {
+        const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+
+        const getRes = await fetch(`/api/reports/${userId}/${monthStr}`);
+        if (getRes.ok) {
+          const data = await getRes.json();
+          setReport(data);
+        } else if (getRes.status === 404) {
+          const postRes = await fetch(`/api/reports/${userId}/${monthStr}?budget=500000`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          if (!postRes.ok) throw new Error("리포트 생성 실패");
+          const created = await postRes.json();
+          setReport(created);
+        } else {
+          throw new Error(`에러 코드 ${getRes.status}`);
+        }
+      } catch (err) {
+        console.error("리포트 로딩 실패:", err);
+      }
+    };
+
+    loadOrCreateReport();
   }, [year, month]);
 
   const handlePrevMonth = () => {
@@ -61,22 +72,18 @@ export default function ReportPage() {
     }
   };
 
-  const pieColors = ["#8fd694", "#f6b94d", "#79a8f5", "#ccc", "#b4b4b4", "#f59f9f"];
+  const pieColors = ["#8fd694", "#f6b94d", "#79a8f5", "#ccc"];
 
-  const pieChartData = report
-    ? Object.entries(report.summary.categoryBreakdown).map(([name, value]) => ({
-        name,
-        value,
-      }))
+  const pieChartData = report?.summary?.spendingByCategory
+    ? Object.entries(report.summary.spendingByCategory).map(([name, value]) => ({ name, value }))
     : [];
 
-  const budgetData = report
+  const budgetData = report?.summary
     ? {
-        total: report.summary.monthBudget ?? 0,
-        used: report.summary.totalSpending ?? 0,
-        remaining:
-          (report.summary.monthBudget ?? 0) - (report.summary.totalSpending ?? 0),
-        usageRate: report.summary.budgetUsageRate ?? 0,
+        total: 500000,
+        used: report.summary.totalSpending,
+        remaining: 500000 - report.summary.totalSpending,
+        usageRate: report.summary.budgetUsageRate,
       }
     : { total: 0, used: 0, remaining: 0, usageRate: 0 };
 
@@ -111,16 +118,13 @@ export default function ReportPage() {
                   data={pieChartData}
                   cx="50%"
                   cy="45%"
-                  outerRadius={90}
+                  outerRadius={100}
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={true}
                 >
                   {pieChartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={pieColors[index % pieColors.length]}
-                    />
+                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                   ))}
                 </Pie>
               </PieChart>
@@ -133,9 +137,7 @@ export default function ReportPage() {
         <section style={styles.budgetSection}>
           <h2 style={styles.budgetTitle}>예산 대비 지출</h2>
           <div style={styles.progressBar}>
-            <div
-              style={{ ...styles.progressFill, width: `${budgetData.usageRate}%` }}
-            >
+            <div style={{ ...styles.progressFill, width: `${budgetData.usageRate}%` }}>
               {budgetData.usageRate}%
             </div>
           </div>
@@ -166,7 +168,7 @@ export default function ReportPage() {
                   barSize={20}
                   barCategoryGap="20%"
                 >
-                  <CartesianGrid stroke="#ccc" strokeDasharray="3 3" vertical horizontal />
+                  <CartesianGrid stroke="#ccc" strokeDasharray="3 3" vertical={true} horizontal={true} />
                   <XAxis dataKey="name" interval={0} />
                   <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                   <ReferenceLine y={25} stroke="#f19209" strokeWidth={1} />
@@ -184,10 +186,11 @@ export default function ReportPage() {
   );
 }
 
+
 const styles = {
   main: {
     fontFamily: "sans-serif",
-    // padding: "2rem",
+    padding: "2rem",
     background: "#fff",
     color: "#444",
     maxWidth: "480px",
@@ -215,8 +218,8 @@ const styles = {
     cursor: "pointer",
   },
   budgetSection: {
-    padding: "1.5rem 2rem",
-    // marginBottom: "2rem",
+    padding: "1.5rem 0",
+    marginBottom: "2rem",
   },
   budgetTitle: {
     fontSize: "1.25rem",
@@ -244,18 +247,17 @@ const styles = {
   },
   chartSection: {
     paddingTop: "1rem",
-    // paddingBottom: "1rem",
+    paddingBottom: "1rem",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     height: "320px",
-    // marginBottom: "2rem",
+    marginBottom: "2rem",
   },
   reportSection: {
     textAlign: "left",
     marginTop: "2rem",
-    padding : "0rem 2rem"
   },
   reportChart: {
     width: "100%",
@@ -276,6 +278,6 @@ const styles = {
     width: "100vw",
     height: "1px",
     backgroundColor: "#ccc",
-    // margin: "2rem calc(-50vw + 50%)",
+    margin: "2rem calc(-50vw + 50%)",
   },
 };
